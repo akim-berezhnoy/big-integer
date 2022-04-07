@@ -24,7 +24,7 @@ jobs:
         echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
 
         apt-get update
-        apt-get install -y git build-essential binutils gcc clang cmake valgrind libc++-dev libc++abi-dev ninja-build curl zip unzip tar pkg-config libunwind-13-dev kitware-archive-keyring
+        apt-get install -y git build-essential binutils gcc clang cmake valgrind libc++-dev libc++abi-dev ninja-build curl zip unzip tar pkg-config libunwind-13-dev kitware-archive-keyring libgmp-dev
         cd ..
         git clone https://github.com/microsoft/vcpkg.git
         ./vcpkg/bootstrap-vcpkg.sh
