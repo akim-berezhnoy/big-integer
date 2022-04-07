@@ -5,7 +5,7 @@ on:
 
 jobs:
   test:
-    name: Tests in ${{ matrix.build_type }} with ${{ matrix.compiler }}
+    name: Tests in ${{ matrix.build_type }} with ${{ matrix.compilerSetter }}
     runs-on: ubuntu-20.04
     container: ubuntu:21.10
     env:
