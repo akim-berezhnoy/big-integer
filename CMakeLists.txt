@@ -26,3 +26,12 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug")
 endif()
 
 target_link_libraries(tests GTest::gtest GTest::gtest_main)
+
+if (ENABLE_SLOW_TEST)
+    target_sources(main PRIVATE
+        ci-extra/big_integer_gmp.h
+        ci-extra/big_integer_gmp.cpp
+        ci-extra/randomized_tests.cpp)
+
+    target_link_libraries(main gmp)
+endif()
