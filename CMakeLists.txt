@@ -28,10 +28,10 @@ endif()
 target_link_libraries(tests GTest::gtest GTest::gtest_main)
 
 if (ENABLE_SLOW_TEST)
-    target_sources(main PRIVATE
+    target_sources(tests PRIVATE
         ci-extra/big_integer_gmp.h
         ci-extra/big_integer_gmp.cpp
         ci-extra/randomized_tests.cpp)
 
-    target_link_libraries(main gmp)
+    target_link_libraries(tests gmp)
 endif()
