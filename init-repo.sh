@@ -18,7 +18,7 @@ if [ -n "$(git status --untracked-files=no --porcelain)" ]; then
     exit 1
 fi
 
-git remote add upstream git@github.com:CPP-KT/bigint-task-2022.git
+git remote add upstream git@github.com:CPP-KT/bigint-task.git
 git fetch upstream
 git branch feedback upstream/master
 git push -u origin feedback:feedback
