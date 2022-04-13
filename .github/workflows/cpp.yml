@@ -30,6 +30,12 @@ jobs:
         ./vcpkg/bootstrap-vcpkg.sh
         cd $GITHUB_WORKSPACE
 
+    # see https://github.com/actions/checkout/issues/760    
+    - name: git-workaround
+      run: |
+        export REPOSITORY_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')
+        git config --global --add safe.directory /__w/${REPOSITORY_NAME}/${REPOSITORY_NAME}
+        
     - uses: actions/checkout@v2
 
     - name: Build main
