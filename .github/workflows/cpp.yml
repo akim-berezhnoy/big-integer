@@ -4,46 +4,84 @@ on:
   pull_request
 
 jobs:
+  formatting-check:
+    name: Formatting check
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Check line breaks
+        run: |
+          sudo apt-get install -y dos2unix
+          pushd $GITHUB_WORKSPACE
+          ci-extra/check-lines.sh
+          popd
+      - name: Run clang-format style check for C/C++/Protobuf programs.
+        uses: jidicula/clang-format-action@v4.9.0
+        with:
+          clang-format-version: '15'
+          check-path: '.'
+
   test:
+    needs: formatting-check
     name: Tests in ${{ matrix.build_type }} with ${{ matrix.compilerSetter }}
-    runs-on: ubuntu-20.04
-    container: ubuntu:20.04
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:22.04
+      options: --privileged
     env:
       DEBIAN_FRONTEND: noninteractive
     strategy:
       matrix:
-        build_type: [Release, SanitizedDebug, RelWithDebInfo]
-        compilerSetter: [CC=gcc CXX=g++, CC=clang CXX='clang++ -stdlib=libc++']
+        build_type: [Release, Debug, SanitizedDebug, RelWithDebInfo]
+        # clang-15 uses dwarf-5 which valgrind doesn't support yet
+        compilerSetter: [CC=gcc-12 CXX=g++-12, CC=clang-15 CXX='clang++-15 -gdwarf-4 -stdlib=libc++' ASAN_OPTIONS=alloc_dealloc_mismatch=0]
+    defaults:
+      run:
+        shell: bash
 
     steps:
-    - name: dependencies
-      run: |
-        apt-get update
-        apt-get install -y gpg wget
-        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-        echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
+      - name: Setup dependencies
+        run: |
+          apt-get update
+          apt-get install -y gpg wget
+          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
+          
+          apt-get update
+          apt-get install -y git build-essential binutils g++-12 gcc-12 clang-15 cmake valgrind libc++-15-dev libc++abi-15-dev ninja-build curl zip unzip tar pkg-config kitware-archive-keyring gdb
+          cd ..
+          git clone https://github.com/microsoft/vcpkg.git
+          ./vcpkg/bootstrap-vcpkg.sh
+          cd $GITHUB_WORKSPACE
 
-        apt-get update
-        apt-get install -y git build-essential binutils gcc clang cmake valgrind libc++-dev libc++abi-dev ninja-build curl zip unzip tar pkg-config libunwind-dev kitware-archive-keyring libgmp-dev
-        cd ..
-        git clone https://github.com/microsoft/vcpkg.git
-        ./vcpkg/bootstrap-vcpkg.sh
-        cd $GITHUB_WORKSPACE
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-    # see https://github.com/actions/checkout/issues/760    
-    - name: git-workaround
-      run: |
-        export REPOSITORY_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')
-        git config --global --add safe.directory /__w/${REPOSITORY_NAME}/${REPOSITORY_NAME}
-        
-    - uses: actions/checkout@v2
+      - name: Update tests
+        run: |
+          chown root:root .
+          git config --global user.name "John Doe"
+          git config --global user.email johndoe@example.com
+          source ci-extra/set-upstream.sh
+          git remote add upstream "https://github.com/$UPSTREAM_REPO.git"
+          git fetch upstream master
+          if git merge-base --is-ancestor upstream/master @; then
+            echo 'Tests are already up to date.'
+          else
+            echo -ne '\e[0;33mWARNING: Tests were not updated on your side. '
+            echo -e 'This script will however run the most recent version.\e[0m'
+            git rebase upstream/master
+          fi
 
-    - name: Build main
-      run: ${{ matrix.compilerSetter }} ci-extra/build.sh ${{ matrix.build_type }}
+      - name: Build main
+        run: ${{ matrix.compilerSetter }} ci-extra/build.sh ${{ matrix.build_type }}
 
-    - name: Test main
-      run: ci-extra/test.sh ${{ matrix.build_type }}
+      - name: Test main
+        run: ${{ matrix.compilerSetter }} ci-extra/test.sh ${{ matrix.build_type }}
 
-    - if: ${{ matrix.build_type == 'RelWithDebInfo' }}
-      name: Test main with valgrind
-      run: ci-extra/test-valgrind.sh
+      - if: ${{ matrix.build_type == 'RelWithDebInfo' }}
+        name: Test main with valgrind
+        run: ${{ matrix.compilerSetter }} ci-extra/test-valgrind.sh

@@ -6,6 +6,11 @@
 set -euo pipefail
 IFS=$' \t\n'
 
+if [[ ! $(git remote get-url origin) =~ ^git@ ]]; then
+    echo "The project is not cloned via SSH"
+    exit 1
+fi
+
 if git remote | grep --quiet upstream; then
     echo "init-repo.sh was already done on this repository."
     exit 1
@@ -18,7 +23,9 @@ if [ -n "$(git status --untracked-files=no --porcelain)" ]; then
     exit 1
 fi
 
-git remote add upstream git@github.com:CPP-KT/bigint-task.git
+source ci-extra/set-upstream.sh
+
+git remote add upstream "git@github.com:$UPSTREAM_REPO.git"
 git fetch upstream
 git branch feedback upstream/master
 git push -u origin feedback:feedback

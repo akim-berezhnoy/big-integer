@@ -15,3 +15,6 @@ CMakeFiles/
 cmake-build*
 cmake_install.cmake
 Makefile
+
+# OS
+.DS_Store
