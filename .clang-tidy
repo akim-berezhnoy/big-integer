@@ -41,4 +41,3 @@ CheckOptions:
   - key:             hicpp-signed-bitwise.IgnorePositiveIntegerLiterals
     value:           true
 ...
-
