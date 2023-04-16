@@ -45,18 +45,18 @@ struct big_integer {
   friend std::string to_string(const big_integer& a);
 };
 
-big_integer operator+(big_integer a, const big_integer& b);
-big_integer operator-(big_integer a, const big_integer& b);
-big_integer operator*(big_integer a, const big_integer& b);
-big_integer operator/(big_integer a, const big_integer& b);
-big_integer operator%(big_integer a, const big_integer& b);
+big_integer operator+(const big_integer& a, const big_integer& b);
+big_integer operator-(const big_integer& a, const big_integer& b);
+big_integer operator*(const big_integer& a, const big_integer& b);
+big_integer operator/(const big_integer& a, const big_integer& b);
+big_integer operator%(const big_integer& a, const big_integer& b);
 
-big_integer operator&(big_integer a, const big_integer& b);
-big_integer operator|(big_integer a, const big_integer& b);
-big_integer operator^(big_integer a, const big_integer& b);
+big_integer operator&(const big_integer& a, const big_integer& b);
+big_integer operator|(const big_integer& a, const big_integer& b);
+big_integer operator^(const big_integer& a, const big_integer& b);
 
-big_integer operator<<(big_integer a, int b);
-big_integer operator>>(big_integer a, int b);
+big_integer operator<<(const big_integer& a, int b);
+big_integer operator>>(const big_integer& a, int b);
 
 bool operator==(const big_integer& a, const big_integer& b);
 bool operator!=(const big_integer& a, const big_integer& b);
@@ -66,4 +66,4 @@ bool operator<=(const big_integer& a, const big_integer& b);
 bool operator>=(const big_integer& a, const big_integer& b);
 
 std::string to_string(const big_integer& a);
-std::ostream& operator<<(std::ostream& s, const big_integer& a);
+std::ostream& operator<<(std::ostream& out, const big_integer& a);

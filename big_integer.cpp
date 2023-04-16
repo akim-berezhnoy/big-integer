@@ -87,43 +87,43 @@ big_integer big_integer::operator--(int) {
   return *this;
 }
 
-big_integer operator+(big_integer a, const big_integer& b) {
+big_integer operator+(const big_integer& a, const big_integer& b) {
   return a;
 }
 
-big_integer operator-(big_integer a, const big_integer& b) {
+big_integer operator-(const big_integer& a, const big_integer& b) {
   return a;
 }
 
-big_integer operator*(big_integer a, const big_integer& b) {
+big_integer operator*(const big_integer& a, const big_integer& b) {
   return a;
 }
 
-big_integer operator/(big_integer a, const big_integer& b) {
+big_integer operator/(const big_integer& a, const big_integer& b) {
   return a;
 }
 
-big_integer operator%(big_integer a, const big_integer& b) {
+big_integer operator%(const big_integer& a, const big_integer& b) {
   return a;
 }
 
-big_integer operator&(big_integer a, const big_integer& b) {
+big_integer operator&(const big_integer& a, const big_integer& b) {
   return a;
 }
 
-big_integer operator|(big_integer a, const big_integer& b) {
-  return a |= b;
+big_integer operator|(const big_integer& a, const big_integer& b) {
+  return big_integer(a) |= b;
 }
 
-big_integer operator^(big_integer a, const big_integer& b) {
+big_integer operator^(const big_integer& a, const big_integer& b) {
   return a;
 }
 
-big_integer operator<<(big_integer a, int b) {
-  return a <<= b;
+big_integer operator<<(const big_integer& a, int b) {
+  return big_integer(a) <<= b;
 }
 
-big_integer operator>>(big_integer a, int b) {
+big_integer operator>>(const big_integer& a, int b) {
   return a;
 }
 
@@ -155,6 +155,6 @@ std::string to_string(const big_integer& a) {
   return "";
 }
 
-std::ostream& operator<<(std::ostream& s, const big_integer& a) {
-  return s << to_string(a);
+std::ostream& operator<<(std::ostream& out, const big_integer& a) {
+  return out << to_string(a);
 }
