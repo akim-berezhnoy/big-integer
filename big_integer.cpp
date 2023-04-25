@@ -48,19 +48,22 @@ big_integer::big_integer(unsigned long long a) : _sign(false) {
   }
 }
 
-big_integer::big_integer(const std::string& str) {
-  bool sign = str[0] == '-';
+big_integer::big_integer(const std::string& str)
+  : _sign(false)
+{
+  *this = 0;
   if (str.empty()) {
     throw std::invalid_argument("Expected number while initializing big_integer, empty string found.");
   }
+  bool sign = str[0] == '-';
   if (sign && str.length() == 1) {
     throw std::invalid_argument("Expected valid number while initializing big_integer, single dash found.");
   }
-  *this = 0;
-  for (auto it = sign ? ++str.begin() : str.begin(); it < str.end(); ++it) {
-    if (!std::isdigit(*it)) {
-      throw std::invalid_argument("Met invalid character while initializing big_integer from string.");
-    }
+  if (std::any_of(str.begin()+sign, str.end(), [] (char x) { return !std::isdigit(x); })) {
+    throw std::invalid_argument("Met invalid character while initializing big_integer from string.");
+  }
+//  std::for_each()
+  for (auto it = str.begin() + sign; it < str.end(); ++it) {
     (*this *= base) += static_cast<uint32_t>(*it - '0');
   }
   _sign = !(*this == 0) && sign;
@@ -86,8 +89,10 @@ void big_integer::swap(big_integer& other) {
 }
 
 big_integer& big_integer::operator=(const big_integer& other) {
-  big_integer tmp(other);
-  swap(tmp);
+  if (this != &other) {
+    big_integer tmp(other);
+    swap(tmp);
+  }
   return *this;
 }
 
@@ -282,14 +287,16 @@ big_integer& big_integer::operator^=(const big_integer& other) {
 
 big_integer& big_integer::operator<<=(int other) {
   uint64_t shift = other / chunk_size;
-  ensure_size(_n.size() + shift + 1);
+  ensure_size(_n.size() + shift + 2);
   convert();
   for (int64_t i = _n.size() - 1; i >= 0; --i) {
     _n[i] = i - shift < 0 ? 0 : _n[i - shift];
   }
   shift = other % chunk_size;
-  for (int64_t i = _n.size() - 2; i >= other / chunk_size; --i) {
-    _n[i + 1] = (_n[i + 1] << shift) ^ (_n[i] >> (chunk_size - shift));
+  if (shift > 0) {
+    for (int64_t i = _n.size() - 2; i >= other / chunk_size; --i) {
+      _n[i + 1] = (_n[i + 1] << shift) | (_n[i] >> (chunk_size - shift));
+    }
   }
   _n[other / chunk_size] <<= shift;
   for (size_t i = 0; i < other / chunk_size; ++i) {
@@ -301,15 +308,18 @@ big_integer& big_integer::operator<<=(int other) {
 }
 
 big_integer& big_integer::operator>>=(int other) {
+  if (_n.size() * chunk_size < other) return _sign ? *this = -1 : *this = 0;
   uint64_t shift = other / chunk_size;
-  ensure_size(_n.size() + 1);
+  ensure_size(_n.size() + 2);
   convert();
-  for (size_t i = 0; i < _n.size() - shift; ++i) {
-    _n[i] = _n[i + shift];
+  for (size_t i = 0; i < _n.size(); ++i) {
+    _n[i] = i < _n.size() - shift ? _n[i + shift] : (_sign ? UINT32_MAX : 0);
   }
   shift = other % chunk_size;
-  for (size_t i = 0; i < _n.size() - 1; ++i) {
-    _n[i] = (_n[i + 1] << (chunk_size - shift)) ^ (_n[i] >> shift);
+  if (shift > 0) {
+    for (size_t i = 0; i < _n.size() - 1; ++i) {
+      _n[i] = (_n[i + 1] << (chunk_size - shift)) | (_n[i] >> shift);
+    }
   }
   convert();
   shrink_to_fit();

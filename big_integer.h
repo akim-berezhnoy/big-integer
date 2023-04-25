@@ -61,7 +61,7 @@ struct big_integer {
 
   friend std::string to_string(const big_integer& a);
 
-private:
+//private:
   bool abs_less(const big_integer& other) const;
   bool abs_eq(const big_integer& other) const;
 
@@ -77,7 +77,7 @@ private:
   template <typename F>
   friend void vector_f(const_vec_ref a, const_vec_ref b, vec_ref result, const F& f);
 
-private:
+//private:
   vec _n;
   bool _sign;
 };
@@ -104,3 +104,4 @@ bool operator>=(const big_integer& a, const big_integer& b);
 
 std::string to_string(const big_integer& a);
 std::ostream& operator<<(std::ostream& out, const big_integer& a);
+
