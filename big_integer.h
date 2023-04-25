@@ -61,14 +61,14 @@ struct big_integer {
 
   friend std::string to_string(const big_integer& a);
 
-//private:
+private:
   bool abs_less(const big_integer& other) const;
   bool abs_eq(const big_integer& other) const;
 
   big_integer& convert();
   friend uint64_t eval_quotient(const big_integer& divisible, const big_integer& divider);
   big_integer divide(const big_integer& other);
-  big_integer(vec other);
+  big_integer(vec vector);
 
   template <typename F>
   big_integer& binary_bit_operation(const big_integer& other, const F& f);
@@ -77,9 +77,9 @@ struct big_integer {
   template <typename F>
   friend void vector_f(const_vec_ref a, const_vec_ref b, vec_ref result, const F& f);
 
-//private:
-  vec _n;
-  bool _sign;
+private:
+  vec _digits;
+  bool _negative;
 };
 
 big_integer operator+(const big_integer& a, const big_integer& b);
