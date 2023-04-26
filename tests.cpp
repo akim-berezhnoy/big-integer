@@ -3,9 +3,40 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstdlib>
 #include <limits>
 #include <string>
+
+namespace {
+
+class time_limit : public ::testing::Environment {
+public:
+  void SetUp() override {
+    clock_start = std::chrono::steady_clock::now();
+  }
+
+  void TearDown() override {
+    auto clock_end = std::chrono::steady_clock::now();
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(clock_end - clock_start);
+    ASSERT_LE(elapsed_time, MAX_ELAPSED_TIME);
+  }
+
+private:
+  static constexpr auto MAX_ELAPSED_TIME = std::chrono::milliseconds(1000);
+
+  std::chrono::steady_clock::time_point clock_start;
+};
+
+} // namespace
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+#ifdef ENABLE_TIME_LIMITS
+  ::testing::AddGlobalTestEnvironment(new time_limit());
+#endif
+  return RUN_ALL_TESTS();
+}
 
 TEST(correctness, two_plus_two) {
   EXPECT_EQ(big_integer(4), big_integer(2) + big_integer(2));

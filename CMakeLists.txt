@@ -52,7 +52,12 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
     target_compile_options(tests PUBLIC -D_GLIBCXX_DEBUG)
 endif()
 
-target_link_libraries(tests GTest::gtest GTest::gtest_main)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Enabling time limit tests...")
+    target_compile_definitions(tests PRIVATE ENABLE_TIME_LIMITS=1)
+endif()
+
+target_link_libraries(tests GTest::gtest)
 
 if(ENABLE_SLOW_TEST)
     target_sources(tests PRIVATE
