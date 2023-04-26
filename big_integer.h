@@ -104,4 +104,3 @@ bool operator>=(const big_integer& a, const big_integer& b);
 
 std::string to_string(const big_integer& a);
 std::ostream& operator<<(std::ostream& out, const big_integer& a);
-

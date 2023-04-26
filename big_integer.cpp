@@ -1,15 +1,15 @@
 #include "big_integer.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstring>
 #include <functional>
 #include <iostream>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
-#include <sstream>
-#include <cmath>
 
 constexpr uint32_t chunk_size = 32;
 constexpr unsigned long base = 10;
@@ -52,9 +52,7 @@ big_integer::big_integer(unsigned long long a) : _negative(false) {
   }
 }
 
-big_integer::big_integer(const std::string& str)
-    : _negative(false)
-{
+big_integer::big_integer(const std::string& str) : _negative(false) {
   *this = 0;
   if (str.empty()) {
     throw std::invalid_argument("Expected valid number while initializing big_integer, empty string found.");
@@ -78,11 +76,15 @@ big_integer::big_integer(const std::string& str)
 big_integer::~big_integer() = default;
 
 void big_integer::ensure_size(size_t n) {
-  if (_digits.size() < n) _digits.resize(n);
+  if (_digits.size() < n) {
+    _digits.resize(n);
+  }
 }
 
 void big_integer::shrink_to_fit() {
-  while (_digits.size() > 1 && !_digits.back()) _digits.pop_back();
+  while (_digits.size() > 1 && !_digits.back()) {
+    _digits.pop_back();
+  }
 }
 
 void big_integer::swap(big_integer& other) {
@@ -100,9 +102,13 @@ big_integer& big_integer::operator=(const big_integer& other) {
 
 bool big_integer::abs_less(const big_integer& other) const {
   size_t size = _digits.size();
-  if (size != other._digits.size()) return size < other._digits.size();
+  if (size != other._digits.size()) {
+    return size < other._digits.size();
+  }
   for (size_t i = 0, index = size - 1 - i; i < size; ++i, --index) {
-    if (_digits[index] != other._digits[index]) return _digits[index] < other._digits[index];
+    if (_digits[index] != other._digits[index]) {
+      return _digits[index] < other._digits[index];
+    }
   }
   return false;
 }
@@ -138,7 +144,9 @@ uint64_t eval_quotient(const big_integer& divisible, const big_integer& divider)
 }
 
 big_integer big_integer::divide(const big_integer& other) {
-  if (abs_less(other)) return 0;
+  if (abs_less(other)) {
+    return 0;
+  }
   auto it = static_cast<int64_t>(_digits.size() - other._digits.size());
   big_integer result;
   result.ensure_size(it + 1);
@@ -157,7 +165,7 @@ big_integer big_integer::divide(const big_integer& other) {
   return result;
 }
 
-big_integer::big_integer(vec vector) : _digits(std::move(vector)) , _negative(false) {}
+big_integer::big_integer(vec vector) : _digits(std::move(vector)), _negative(false) {}
 
 template <typename F>
 big_integer& big_integer::binary_bit_operation(const big_integer& other, const F& f) {
@@ -173,7 +181,8 @@ void vector_bit_f(const big_integer& a, const big_integer& b, big_integer& resul
   for (size_t i = 0; i < a._digits.size(); ++i) {
     uint64_t converted_a_i = (a._negative ? ~a._digits[i] : a._digits[i]);
     converted_a_i += a_carry;
-    uint64_t converted_b_i = i < b._digits.size() ? (b._negative ? ~b._digits[i] : b._digits[i]) : (b._negative ? UINT32_MAX : 0);
+    uint64_t converted_b_i =
+        i < b._digits.size() ? (b._negative ? ~b._digits[i] : b._digits[i]) : (b._negative ? UINT32_MAX : 0);
     converted_b_i += b_carry;
     a_carry = converted_a_i >> chunk_size;
     b_carry = converted_b_i >> chunk_size;
@@ -237,8 +246,7 @@ big_integer& big_integer::operator*=(const big_integer& other) {
     _digits[this_it] = 0;
     size_t other_it = 0;
     while (other_it < other._digits.size() || carry) {
-      const uint64_t result =
-          (other_it < other._digits.size() ? other._digits[other_it] * multiplier : 0) +
+      const uint64_t result = (other_it < other._digits.size() ? other._digits[other_it] * multiplier : 0) +
                               _digits[this_it + other_it] + carry;
       _digits[this_it + other_it] = result;
       carry = result >> chunk_size;
@@ -305,7 +313,9 @@ big_integer& big_integer::operator<<=(int other) {
 }
 
 big_integer& big_integer::operator>>=(int other) {
-  if (_digits.size() * chunk_size < other) return _negative ? *this = -1 : *this = 0;
+  if (_digits.size() * chunk_size < other) {
+    return _negative ? *this = -1 : *this = 0;
+  }
   uint64_t shift = other / chunk_size;
   ensure_size(_digits.size() + 2);
   convert();
