@@ -38,7 +38,7 @@ big_integer::big_integer(long a) : big_integer(static_cast<long long>(a)) {}
 big_integer::big_integer(unsigned long a) : big_integer(static_cast<unsigned long long>(a)) {}
 
 big_integer::big_integer(long long a) : _negative(a < 0) {
-  unsigned long long x = std::abs(a);
+  unsigned long long x = a == LLONG_MIN ? ULLONG_MAX - LLONG_MAX : (_negative ? -a : a);
   _digits.push_back(x);
   if (x >> chunk_size) {
     _digits.push_back(x >> chunk_size);
