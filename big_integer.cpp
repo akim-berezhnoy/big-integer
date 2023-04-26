@@ -454,12 +454,7 @@ bool operator<(const big_integer& a, const big_integer& b) {
   if (a._negative == b._negative) {
     return a._negative ? b.abs_less(a) : a.abs_less(b);
   }
-  if (a._negative) {
-    return true;
-  }
-  if (!a._negative) {
-    return false;
-  }
+  return a._negative;
 }
 
 bool operator>(const big_integer& a, const big_integer& b) {
