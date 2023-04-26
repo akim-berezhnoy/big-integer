@@ -67,6 +67,7 @@ private:
 
   big_integer& convert();
   friend uint64_t eval_quotient(const big_integer& divisible, const big_integer& divider);
+  big_integer divide_by_digit(uint32_t other);
   big_integer divide(const big_integer& other);
   big_integer(vec vector);
 

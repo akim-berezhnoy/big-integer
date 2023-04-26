@@ -143,14 +143,31 @@ uint64_t eval_quotient(const big_integer& divisible, const big_integer& divider)
   return l;
 }
 
-// TODO:
+big_integer big_integer::divide_by_digit(uint32_t other) {
+  ensure_size(_digits.size());
+  big_integer result(vec(_digits.size()));
+  uint64_t remainder = _digits.back();
+  for (auto it = static_cast<int64_t>(_digits.size() - 1); it >= 0; --it) {
+    uint64_t quotient = remainder / other;
+    result._digits[it] = quotient;
+    remainder -= quotient * other;
+    _digits[it] = remainder;
+    remainder <<= chunk_size;
+    remainder += it == 0 ? 0 : _digits[it - 1];
+  }
+  result.shrink_to_fit();
+  return result;
+}
+
 big_integer big_integer::divide(const big_integer& other) {
   if (abs_less(other)) {
     return 0;
   }
+  if (other._digits.size() == 1) {
+    return divide_by_digit(other._digits.front());
+  }
   auto it = static_cast<int64_t>(_digits.size() - other._digits.size());
-  big_integer result;
-  result.ensure_size(it + 1);
+  big_integer result(vec(it + 1));
   auto last_zero = _digits.end();
   while (it >= 0) {
     big_integer portion = vec(_digits.begin() + it, last_zero);
