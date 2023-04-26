@@ -8,9 +8,13 @@
 #include <ostream>
 #include <stdexcept>
 #include <utility>
+#include <sstream>
+#include <cmath>
 
 constexpr uint32_t chunk_size = 32;
-constexpr uint64_t base = 10;
+constexpr unsigned long base = 10;
+constexpr unsigned long transition_chunk_size = 9;
+constexpr unsigned long to_div = 1'000'000'000;
 
 big_integer::big_integer() : _negative(false) {
   _digits.push_back(0);
@@ -49,7 +53,7 @@ big_integer::big_integer(unsigned long long a) : _negative(false) {
 }
 
 big_integer::big_integer(const std::string& str)
-  : _negative(false)
+    : _negative(false)
 {
   *this = 0;
   if (str.empty()) {
@@ -59,9 +63,14 @@ big_integer::big_integer(const std::string& str)
   if (sign && str.length() == 1) {
     throw std::invalid_argument("Expected valid number while initializing big_integer, single dash found.");
   }
-  for (auto it = str.begin() + sign; it < str.end(); ++it) {
-    if (!std::isdigit(*it)) throw std::invalid_argument("Met invalid character while initializing big_integer with a string.");
-    (*this *= base) += static_cast<uint32_t>(*it - '0');
+  if (!std::all_of(str.begin() + sign, str.end(), ::isdigit)) {
+    throw std::invalid_argument("Met invalid character while initializing big_integer with a string.");
+  }
+  uint32_t digit = 0;
+  for (size_t i = 0 + sign; i < str.size(); i += transition_chunk_size) {
+    unsigned long length = std::min(transition_chunk_size, str.size() - i);
+    digit = std::stoi(str.substr(i, length));
+    (*this *= static_cast<uint32_t>(pow(base, length))) += digit;
   }
   _negative = !(*this == 0) && sign;
 }
@@ -422,18 +431,26 @@ std::string to_string(const big_integer& a) {
   bool sign = a._negative;
   big_integer divisible(a);
   divisible._negative = false;
-  uint32_t neutral = static_cast<uint32_t>('0');
   std::string result;
+  big_integer::vec answer;
   while (big_integer(0).abs_less(divisible)) {
-    big_integer tmp = divisible.divide(base);
-    result += static_cast<char>(neutral + divisible._digits[0]);
+    big_integer tmp(divisible.divide(to_div));
+    answer.push_back(divisible._digits.front());
     divisible = tmp;
   }
-  if (result.empty()) {
+  if (answer.empty()) {
     result += '0';
+  } else {
+    result += sign ? "-" : "";
+    result += std::to_string(answer.back());
+    answer.pop_back();
+    while (!answer.empty()) {
+      std::string tmp(to_string(answer.back()));
+      answer.pop_back();
+      result += std::string(transition_chunk_size - tmp.size(), '0') + tmp;
+    }
   }
-  std::reverse(result.begin(), result.end());
-  return sign ? "-" + result : result;
+  return result;
 }
 
 std::ostream& operator<<(std::ostream& out, const big_integer& a) {
