@@ -27,7 +27,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(tests PRIVATE -Wshadow=compatible-local)
     target_compile_options(tests PRIVATE -Wduplicated-branches)
     target_compile_options(tests PRIVATE -Wduplicated-cond)
-    target_compile_options(tests PRIVATE -Wnull-dereference)
+
+    # Disabled because of https://gcc.gnu.org/bugzilla/show_bug.cgi?id=108860
+    # target_compile_options(tests PRIVATE -Wnull-dereference)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(tests PRIVATE -Wshadow-uncaptured-local)
     target_compile_options(tests PRIVATE -Wloop-analysis)
