@@ -291,7 +291,7 @@ big_integer& big_integer::operator^=(const big_integer& other) {
 }
 
 big_integer& big_integer::operator<<=(int other) {
-  uint64_t shift = other / chunk_size;
+  int64_t shift = other / chunk_size;
   ensure_size(_digits.size() + shift + 2);
   convert();
   for (int64_t i = _digits.size() - 1; i >= 0; --i) {
@@ -316,7 +316,7 @@ big_integer& big_integer::operator>>=(int other) {
   if (_digits.size() * chunk_size < other) {
     return _negative ? *this = -1 : *this = 0;
   }
-  uint64_t shift = other / chunk_size;
+  int64_t shift = other / chunk_size;
   ensure_size(_digits.size() + 2);
   convert();
   for (size_t i = 0; i < _digits.size(); ++i) {
