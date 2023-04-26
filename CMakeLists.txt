@@ -21,6 +21,9 @@ endif()
 
 # Compiler specific warnings
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # Workaround for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105329
+    target_compile_options(tests PRIVATE -Wno-restrict)
+
     target_compile_options(tests PRIVATE -Wshadow=compatible-local)
     target_compile_options(tests PRIVATE -Wduplicated-branches)
     target_compile_options(tests PRIVATE -Wduplicated-cond)
