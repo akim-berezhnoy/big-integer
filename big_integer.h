@@ -12,8 +12,6 @@ struct big_integer {
 
   big_integer();
   big_integer(const big_integer& other);
-  big_integer(short a);
-  big_integer(unsigned short a);
   big_integer(int a);
   big_integer(unsigned int a);
   big_integer(long a);
