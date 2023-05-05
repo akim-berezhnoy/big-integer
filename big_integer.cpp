@@ -314,7 +314,7 @@ big_integer& big_integer::operator<<=(int other) {
   ensure_size(_digits.size() + shift + 2);
   convert();
   for (size_t i = _digits.size() - 1; i-- > 0;) {
-    _digits[i] = i - shift < 0 ? 0 : _digits[i - shift];
+    _digits[i] = i < shift ? 0 : _digits[i - shift];
   }
   shift = other % chunk_size;
   for (size_t i = _digits.size() - 2; shift > 0 && i-- > other / chunk_size;) {
