@@ -455,7 +455,7 @@ bool operator>=(const big_integer& a, const big_integer& b) {
 }
 
 std::string to_string(const big_integer& a) {
-  bool sign = a._negative;
+  bool sign = a._negative && !a.abs_eq(0);
   big_integer divisible(a);
   divisible._negative = false;
   std::string result;
