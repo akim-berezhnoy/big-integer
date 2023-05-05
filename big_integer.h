@@ -22,8 +22,7 @@ struct big_integer {
   ~big_integer();
 
   void ensure_size(size_t n);
-  void shrink_to_fit();
-  void swap(big_integer& other);
+  void reduce_zeroes() noexcept;
 
   big_integer& operator=(const big_integer& other);
 
@@ -63,18 +62,19 @@ private:
   bool abs_less(const big_integer& other) const;
   bool abs_eq(const big_integer& other) const;
 
-  big_integer& convert();
+  big_integer& convert() noexcept;
   friend uint64_t eval_quotient(const big_integer& divisible, const big_integer& divider);
   big_integer divide_by_digit(uint32_t other);
   big_integer divide(const big_integer& other);
   big_integer(vec vector);
+  big_integer(unsigned long long a, bool sign);
 
   template <typename F>
   big_integer& binary_bit_operation(const big_integer& other, const F& f);
   template <typename F>
-  friend void vector_bit_f(const big_integer& a, const big_integer& b, big_integer& result, const F& f);
+  inline friend void vector_bit_f(const big_integer& a, const big_integer& b, big_integer& result, const F& f);
   template <typename F>
-  friend void vector_f(const_vec_ref a, const_vec_ref b, vec_ref result, const F& f);
+  inline friend void vector_f(const_vec_ref a, const_vec_ref b, vec_ref result, const F& f);
 
 private:
   vec _digits;

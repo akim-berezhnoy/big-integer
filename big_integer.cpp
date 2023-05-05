@@ -11,19 +11,25 @@
 #include <stdexcept>
 #include <utility>
 
+namespace loc_consts {
 constexpr uint32_t chunk_size = 32;
 constexpr unsigned long base = 10;
 constexpr unsigned long transition_chunk_size = 9;
 constexpr unsigned long transition_chunk = 1'000'000'000;
 
+constexpr uint32_t CHUNK_MAX = std::numeric_limits<uint32_t>().max();
+constexpr uint64_t DOUBLE_CHUNK_MAX = std::numeric_limits<uint64_t>().max();
+constexpr int32_t SIGNED_CHUNK_MIN = std::numeric_limits<int32_t>().min();
+constexpr int32_t SIGNED_CHUNK_MAX = std::numeric_limits<int32_t>().max();
+constexpr int64_t SIGNED_DOUBLE_CHUNK_MIN = std::numeric_limits<int64_t>().min();
+constexpr int64_t SIGNED_DOUBLE_CHUNK_MAX = std::numeric_limits<int64_t>().max();
+} // namespace loc_consts
+
 big_integer::big_integer() : _negative(false) {
   _digits.push_back(0);
 }
 
-big_integer::big_integer(const big_integer& other) : _negative(other._negative) {
-  _digits.resize(other._digits.size());
-  std::copy(other._digits.begin(), other._digits.end(), _digits.begin());
-}
+big_integer::big_integer(const big_integer& other) = default;
 
 big_integer::big_integer(int a) : big_integer(static_cast<long long>(a)) {}
 
@@ -33,18 +39,18 @@ big_integer::big_integer(long a) : big_integer(static_cast<long long>(a)) {}
 
 big_integer::big_integer(unsigned long a) : big_integer(static_cast<unsigned long long>(a)) {}
 
-big_integer::big_integer(long long a) : _negative(a < 0) {
-  unsigned long long x = a == INT64_MIN ? UINT64_MAX - INT64_MAX : (_negative ? -a : a);
-  _digits.push_back(x);
-  if (x >> chunk_size) {
-    _digits.push_back(x >> chunk_size);
-  }
-}
+big_integer::big_integer(long long a)
+    : big_integer(a == loc_consts::SIGNED_DOUBLE_CHUNK_MIN
+                      ? loc_consts::DOUBLE_CHUNK_MAX - loc_consts::SIGNED_DOUBLE_CHUNK_MAX
+                      : (a < 0 ? -a : a),
+                  a < 0) {}
 
-big_integer::big_integer(unsigned long long a) : _negative(false) {
+big_integer::big_integer(unsigned long long a) : big_integer(a, false) {}
+
+big_integer::big_integer(unsigned long long a, bool sign) : _negative(sign) {
   _digits.push_back(a);
-  if (a >> chunk_size) {
-    _digits.push_back(a >> chunk_size);
+  if (a >>= loc_consts::chunk_size) {
+    _digits.push_back(a);
   }
 }
 
@@ -61,10 +67,12 @@ big_integer::big_integer(const std::string& str) : _negative(false) {
     throw std::invalid_argument("Met invalid character while initializing big_integer with a string.");
   }
   uint32_t digit = 0;
-  for (size_t i = 0 + sign; i < str.size(); i += transition_chunk_size) {
-    unsigned long length = std::min(transition_chunk_size, str.size() - i);
+  for (size_t i = sign; i < str.size(); i += loc_consts::transition_chunk_size) {
+    unsigned long length = std::min(loc_consts::transition_chunk_size, str.size() - i);
     digit = std::stoi(str.substr(i, length));
-    (*this *= length == transition_chunk_size ? transition_chunk : static_cast<uint32_t>(pow(base, length))) += digit;
+    operator*=(length == loc_consts::transition_chunk_size ? loc_consts::transition_chunk
+                                                           : static_cast<uint32_t>(pow(loc_consts::base, length)));
+    operator+=(digit);
   }
   _negative = !(*this == 0) && sign;
 }
@@ -77,57 +85,41 @@ void big_integer::ensure_size(size_t n) {
   }
 }
 
-void big_integer::shrink_to_fit() {
+void big_integer::reduce_zeroes() noexcept {
   while (_digits.size() > 1 && !_digits.back()) {
     _digits.pop_back();
   }
 }
 
-void big_integer::swap(big_integer& other) {
-  std::swap(_digits, other._digits);
-  std::swap(_negative, other._negative);
-}
-
-big_integer& big_integer::operator=(const big_integer& other) {
-  if (this != &other) {
-    big_integer tmp(other);
-    swap(tmp);
-  }
-  return *this;
-}
+big_integer& big_integer::operator=(const big_integer& other) = default;
 
 bool big_integer::abs_less(const big_integer& other) const {
   size_t size = _digits.size();
   if (size != other._digits.size()) {
     return size < other._digits.size();
   }
-  for (size_t i = 0, index = size - 1 - i; i < size; ++i, --index) {
-    if (_digits[index] != other._digits[index]) {
-      return _digits[index] < other._digits[index];
-    }
-  }
-  return false;
+  return std::lexicographical_compare(_digits.rbegin(), _digits.rend(), other._digits.rbegin(), other._digits.rend());
 }
 
 bool big_integer::abs_eq(const big_integer& other) const {
-  return (_digits.size() == other._digits.size()) && std::equal(_digits.begin(), _digits.end(), other._digits.begin());
+  return _digits == other._digits;
 }
 
-big_integer& big_integer::convert() {
+big_integer& big_integer::convert() noexcept {
   if (_negative) {
     uint64_t carry = true;
     std::for_each(_digits.begin(), _digits.end(), [&carry](uint32_t& x) {
       uint64_t res = ~x;
       res += carry;
       x = res;
-      carry = res >> chunk_size;
+      carry = res >> loc_consts::chunk_size;
     });
   }
   return *this;
 }
 
 uint64_t eval_quotient(const big_integer& divisible, const big_integer& divider) {
-  uint64_t l = 0, r = (UINT64_MAX >> chunk_size) + 1;
+  uint64_t l = 0, r = (loc_consts::DOUBLE_CHUNK_MAX >> loc_consts::chunk_size) + 1;
   while (r - l > 1) {
     uint32_t m = (l + r) / 2;
     if (m * divider <= divisible) {
@@ -148,10 +140,10 @@ big_integer big_integer::divide_by_digit(uint32_t other) {
     result._digits[it] = quotient;
     remainder -= quotient * other;
     _digits[it] = remainder;
-    remainder <<= chunk_size;
+    remainder <<= loc_consts::chunk_size;
     remainder += it == 0 ? 0 : _digits[it - 1];
   }
-  result.shrink_to_fit();
+  result.reduce_zeroes();
   return result;
 }
 
@@ -167,7 +159,7 @@ big_integer big_integer::divide(const big_integer& other) {
   auto last_zero = _digits.end();
   while (it >= 0) {
     big_integer portion = vec(_digits.begin() + it, last_zero);
-    portion.shrink_to_fit();
+    portion.reduce_zeroes();
     uint64_t quotient = eval_quotient(portion, other);
     result._digits[it] = quotient;
     big_integer replacement(portion - quotient * other);
@@ -178,62 +170,47 @@ big_integer big_integer::divide(const big_integer& other) {
       last_zero--;
     }
   }
-  shrink_to_fit();
-  result.shrink_to_fit();
+  reduce_zeroes();
+  result.reduce_zeroes();
   return result;
 }
 
-big_integer::big_integer(vec vector) : _digits(std::move(vector)), _negative(false) {}
+big_integer::big_integer(vec vector) : _digits(vector), _negative(false) {}
 
 template <typename F>
 big_integer& big_integer::binary_bit_operation(const big_integer& other, const F& f) {
   bool less = abs_less(other);
-  const big_integer& greatest = less ? other : *this;
-  const big_integer& smallest = less ? *this : other;
-  vector_bit_f(greatest, smallest, *this, f);
+  vector_bit_f(less ? other : *this, less ? *this : other, *this, f);
   return *this;
 }
 
 template <typename F>
 void vector_bit_f(const big_integer& a, const big_integer& b, big_integer& result, const F& f) {
-  size_t min_len = std::min(a._digits.size(), b._digits.size()), max_len = std::max(a._digits.size(), b._digits.size());
+  size_t max_len = std::max(a._digits.size(), b._digits.size());
   bool a_carry = a._negative, b_carry = b._negative;
-  for (size_t i = 0; i < min_len; ++i) {
+  result._digits.resize(max_len);
+  for (size_t i = 0; i < max_len; ++i) {
     uint64_t a_i = a._negative ? ~a._digits[i] : a._digits[i];
     a_i += a_carry;
     uint64_t b_i = b._negative ? ~b._digits[i] : b._digits[i];
     b_i += b_carry;
-    a_carry = a_i > UINT32_MAX;
-    b_carry = b_i > UINT32_MAX;
+    a_carry = a_i > loc_consts::CHUNK_MAX;
+    b_carry = b_i > loc_consts::CHUNK_MAX;
     result._digits[i] = f(a_i, b_i);
-  }
-  uint32_t second_border_value = b._negative ? UINT32_MAX : 0;
-  for (size_t i = min_len; i < max_len; ++i) {
-    uint64_t a_i = a._negative ? ~a._digits[i] : a._digits[i];
-    a_i += a_carry;
-    a_carry = a_i > UINT32_MAX;
-    if (i < result._digits.size()) {
-      result._digits[i] = f(a_i, second_border_value);
-    } else {
-      result._digits.push_back(f(a_i, second_border_value));
-    }
   }
   result._negative = f(a._negative, b._negative);
   result.convert();
-  result.shrink_to_fit();
+  result.reduce_zeroes();
 }
 
 template <typename F>
 void vector_f(big_integer::const_vec_ref a, big_integer::const_vec_ref b, big_integer::vec_ref result, const F& f) {
   bool carry = false;
+  result.resize(std::max(a.size(), b.size()));
   for (size_t i = 0; i < a.size(); ++i) {
     int64_t res = f(f(a[i], (i < b.size() ? b[i] : 0)), carry);
-    carry = (res > UINT32_MAX) || (res < 0);
-    if (i < result.size()) {
-      result[i] = res;
-    } else {
-      result.push_back(res);
-    }
+    carry = (res > loc_consts::CHUNK_MAX) || (res < 0);
+    result[i] = res;
   }
   if (carry) {
     result.push_back(carry);
@@ -249,13 +226,23 @@ big_integer& big_integer::operator+=(const big_integer& other) {
   } else {
     vector_f(greatest, smallest, _digits, std::minus<int64_t>());
   }
-  shrink_to_fit();
+  reduce_zeroes();
   _negative = less ? other._negative : _negative && !abs_eq(0);
   return *this;
 }
 
 big_integer& big_integer::operator-=(const big_integer& other) {
-  return operator+=(-other);
+  bool less = abs_less(other);
+  big_integer::const_vec_ref greatest = less ? other._digits : _digits;
+  big_integer::const_vec_ref smallest = less ? _digits : other._digits;
+  if (_negative == other._negative) {
+    vector_f(greatest, smallest, _digits, std::minus<int64_t>());
+  } else {
+    vector_f(greatest, smallest, _digits, std::plus<int64_t>());
+  }
+  reduce_zeroes();
+  _negative = less ? !other._negative : _negative && !abs_eq(0);
+  return *this;
 }
 
 big_integer& big_integer::operator*=(const big_integer& other) {
@@ -270,18 +257,18 @@ big_integer& big_integer::operator*=(const big_integer& other) {
       const uint64_t result = (other_it < other._digits.size() ? other._digits[other_it] * multiplier : 0) +
                               _digits[this_it + other_it] + carry;
       _digits[this_it + other_it] = result;
-      carry = result >> chunk_size;
+      carry = result >> loc_consts::chunk_size;
       other_it++;
     }
   }
   _negative = _negative ^ other._negative;
-  shrink_to_fit();
+  reduce_zeroes();
   return *this;
 }
 
 big_integer& big_integer::operator/=(const big_integer& other) {
   bool sign = _negative ^ other._negative;
-  auto divider(other);
+  big_integer divider(other);
   divider._negative = _negative = false;
   *this = divide(divider);
   _negative = sign;
@@ -310,41 +297,41 @@ big_integer& big_integer::operator^=(const big_integer& other) {
 }
 
 big_integer& big_integer::operator<<=(int other) {
-  size_t shift = other / chunk_size;
+  size_t shift = other / loc_consts::chunk_size;
   ensure_size(_digits.size() + shift + 2);
   convert();
   for (size_t i = _digits.size() - 1; i-- > 0;) {
     _digits[i] = i < shift ? 0 : _digits[i - shift];
   }
-  shift = other % chunk_size;
-  for (size_t i = _digits.size() - 2; shift > 0 && i-- > other / chunk_size;) {
-    _digits[i + 1] = (_digits[i + 1] << shift) | (_digits[i] >> (chunk_size - shift));
+  shift = other % loc_consts::chunk_size;
+  for (size_t i = _digits.size() - 2; shift > 0 && i-- > other / loc_consts::chunk_size;) {
+    _digits[i + 1] = (_digits[i + 1] << shift) | (_digits[i] >> (loc_consts::chunk_size - shift));
   }
-  _digits[other / chunk_size] <<= shift;
-  for (size_t i = 0; i < other / chunk_size; ++i) {
+  _digits[other / loc_consts::chunk_size] <<= shift;
+  for (size_t i = 0; i < other / loc_consts::chunk_size; ++i) {
     _digits[i] = 0;
   }
   convert();
-  shrink_to_fit();
+  reduce_zeroes();
   return *this;
 }
 
 big_integer& big_integer::operator>>=(int other) {
-  if (_digits.size() * chunk_size < other) {
+  if (_digits.size() * loc_consts::chunk_size < other) {
     return _negative ? *this = -1 : *this = 0;
   }
-  size_t shift = other / chunk_size;
+  size_t shift = other / loc_consts::chunk_size;
   ensure_size(_digits.size() + 2);
   convert();
   for (size_t i = 0; i < _digits.size(); ++i) {
-    _digits[i] = i < _digits.size() - shift ? _digits[i + shift] : (_negative ? UINT32_MAX : 0);
+    _digits[i] = i < _digits.size() - shift ? _digits[i + shift] : (_negative ? loc_consts::CHUNK_MAX : 0);
   }
-  shift = other % chunk_size;
+  shift = other % loc_consts::chunk_size;
   for (size_t i = 0; shift > 0 && i < _digits.size() - 1; ++i) {
-    _digits[i] = (_digits[i + 1] << (chunk_size - shift)) | (_digits[i] >> shift);
+    _digits[i] = (_digits[i + 1] << (loc_consts::chunk_size - shift)) | (_digits[i] >> shift);
   }
   convert();
-  shrink_to_fit();
+  reduce_zeroes();
   return *this;
 }
 
@@ -460,10 +447,10 @@ std::string to_string(const big_integer& a) {
   divisible._negative = false;
   std::string result;
   do {
-    big_integer tmp(divisible.divide(transition_chunk));
+    big_integer tmp(divisible.divide(loc_consts::transition_chunk));
     std::string portion(std::to_string(divisible._digits.front()));
     std::reverse(portion.begin(), portion.end());
-    portion += std::string(transition_chunk_size - portion.size(), '0');
+    portion += std::string(loc_consts::transition_chunk_size - portion.size(), '0');
     result += portion;
     divisible = tmp;
   } while (big_integer(0).abs_less(divisible));
