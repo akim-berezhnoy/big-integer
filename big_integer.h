@@ -70,7 +70,7 @@ private:
   big_integer(unsigned long long a, bool sign);
 
   template <typename F>
-  big_integer& binary_bit_operation(const big_integer& other, const F& f);
+  inline big_integer& binary_bit_operation(const big_integer& other, const F& f);
   template <typename F>
   inline friend void vector_bit_f(const big_integer& a, const big_integer& b, big_integer& result, const F& f);
   template <typename F>
