@@ -8,12 +8,12 @@
 #include <functional>
 #include <iostream>
 #include <ostream>
-#include <sstream>
 #include <stdexcept>
 #include <utility>
 
 namespace loc_consts {
 constexpr uint32_t chunk_size = 32;
+constexpr uint32_t chunk_size_log2 = 5;
 constexpr uint64_t BETTA = 4'294'967'296;
 constexpr unsigned long base = 10;
 constexpr unsigned long transition_chunk_size = 9;
@@ -63,9 +63,11 @@ big_integer::big_integer(const std::string& str) : _negative(false) {
   if (sign && str.length() == 1) {
     throw std::invalid_argument("Expected valid number while initializing big_integer, single dash found.");
   }
+
   if (!std::all_of(str.begin() + sign, str.end(), ::isdigit)) {
     throw std::invalid_argument("Met invalid character while initializing big_integer with a string.");
   }
+
   uint32_t digit = 0;
   for (size_t i = sign; i < str.size(); i += loc_consts::transition_chunk_size) {
     unsigned long length = std::min(loc_consts::transition_chunk_size, str.size() - i);
@@ -140,23 +142,22 @@ big_integer big_integer::divide(big_integer& A, big_integer B) {
   big_integer Q;
   big_integer::vec_ref q = Q._digits;
   q.resize(m + 1);
-  if (A >= (B << static_cast<int>(loc_consts::chunk_size * m))) {
+  if (A >= (B << static_cast<int>(m << loc_consts::chunk_size_log2))) {
     q[m] = 1;
-    A -= (B << static_cast<int>(loc_consts::chunk_size * m));
+    A -= (B << static_cast<int>(m << loc_consts::chunk_size_log2));
   } else {
     q[m] = 0;
   }
   for (size_t j = m; j-- > 0;) {
     uint64_t q_tmp =
-        n + j < a.size() ? (static_cast<uint64_t>(a[n + j]) * loc_consts::BETTA + a[n + j - 1]) / b[n - 1] : 0;
+        n + j < a.size() ? ((static_cast<uint64_t>(a[n + j]) << loc_consts::chunk_size) + a[n + j - 1]) / b[n - 1] : 0;
     q[j] = std::min(q_tmp, loc_consts::BETTA - 1);
-    A -= ((q[j] * B) << static_cast<int>(loc_consts::chunk_size * j));
+    A -= ((q[j] * B) << static_cast<int>(j << loc_consts::chunk_size_log2));
     while (A < 0) {
-      q[j] -= 1;
-      A += (B << static_cast<int>(loc_consts::chunk_size * j));
+      --q[j];
+      A += (B << static_cast<int>(j << loc_consts::chunk_size_log2));
     }
   }
-  A.reduce_zeroes();
   Q.reduce_zeroes();
   return Q;
 }
