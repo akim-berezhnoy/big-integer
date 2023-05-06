@@ -147,7 +147,8 @@ big_integer big_integer::divide(big_integer& A, big_integer B) {
     q[m] = 0;
   }
   for (size_t j = m; j-- > 0;) {
-    uint64_t q_tmp = (static_cast<uint64_t>(a[n + j]) * loc_consts::BETTA + a[n + j - 1]) / b[n - 1];
+    uint64_t q_tmp =
+        n + j < a.size() ? (static_cast<uint64_t>(a[n + j]) * loc_consts::BETTA + a[n + j - 1]) / b[n - 1] : 0;
     q[j] = std::min(q_tmp, loc_consts::BETTA - 1);
     A -= ((q[j] * B) << static_cast<int>(loc_consts::chunk_size * j));
     while (A < 0) {
