@@ -63,18 +63,18 @@ private:
   bool abs_eq(const big_integer& other) const;
 
   big_integer& convert() noexcept;
-  friend uint64_t eval_quotient(const big_integer& divisible, const big_integer& divider);
-  big_integer divide_by_digit(uint32_t other);
   big_integer divide(const big_integer& other);
   big_integer(vec vector);
   big_integer(unsigned long long a, bool sign);
 
+  static big_integer divide(big_integer& a, big_integer b);
+
   template <typename F>
   inline big_integer& binary_bit_operation(const big_integer& other, const F& f);
   template <typename F>
-  inline friend void vector_bit_f(const big_integer& a, const big_integer& b, big_integer& result, const F& f);
+  static void vector_bit_f(const big_integer& a, const big_integer& b, big_integer& result, const F& f);
   template <typename F>
-  inline friend void vector_f(const_vec_ref a, const_vec_ref b, vec_ref result, const F& f);
+  static void vector_f(const_vec_ref a, const_vec_ref b, vec_ref result, const F& f);
 
 private:
   vec _digits;

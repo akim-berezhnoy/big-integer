@@ -1,6 +1,7 @@
 #include "big_integer.h"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <cstring>
@@ -13,6 +14,7 @@
 
 namespace loc_consts {
 constexpr uint32_t chunk_size = 32;
+constexpr uint64_t BETTA = 4'294'967'296;
 constexpr unsigned long base = 10;
 constexpr unsigned long transition_chunk_size = 9;
 constexpr unsigned long transition_chunk = 1'000'000'000;
@@ -129,48 +131,43 @@ uint64_t eval_quotient(const big_integer& divisible, const big_integer& divider)
   return l;
 }
 
-big_integer big_integer::divide_by_digit(uint32_t other) {
-  ensure_size(_digits.size());
-  big_integer result(vec(_digits.size()));
-  uint64_t remainder = _digits.back();
-  for (auto it = static_cast<int64_t>(_digits.size() - 1); it >= 0; --it) {
-    uint64_t quotient = remainder / other;
-    result._digits[it] = quotient;
-    remainder -= quotient * other;
-    _digits[it] = remainder;
-    remainder <<= loc_consts::chunk_size;
-    remainder += it == 0 ? 0 : _digits[it - 1];
+big_integer big_integer::divide(big_integer& A, big_integer B) {
+  int shift = std::countl_zero(B._digits.back());
+  A <<= shift;
+  B <<= shift;
+  big_integer::vec_ref a = A._digits, b = B._digits;
+  size_t n = b.size(), m = a.size() - n;
+  big_integer Q;
+  big_integer::vec_ref q = Q._digits;
+  q.resize(m + 1);
+  if (A >= (B << static_cast<int>(loc_consts::chunk_size * m))) {
+    q[m] = 1;
+    A -= (B << static_cast<int>(loc_consts::chunk_size * m));
+  } else {
+    q[m] = 0;
   }
-  result.reduce_zeroes();
-  return result;
+  for (size_t j = m; j-- > 0;) {
+    uint64_t q_tmp = (static_cast<uint64_t>(a[n + j]) * loc_consts::BETTA + a[n + j - 1]) / b[n - 1];
+    q[j] = std::min(q_tmp, loc_consts::BETTA - 1);
+    A -= ((q[j] * B) << static_cast<int>(loc_consts::chunk_size * j));
+    while (A < 0) {
+      q[j] -= 1;
+      A += (B << static_cast<int>(loc_consts::chunk_size * j));
+    }
+  }
+  A.reduce_zeroes();
+  Q.reduce_zeroes();
+  return Q;
 }
 
 big_integer big_integer::divide(const big_integer& other) {
   if (abs_less(other)) {
     return 0;
   }
-  if (other._digits.size() == 1) {
-    return divide_by_digit(other._digits.front());
-  }
-  auto it = static_cast<int64_t>(_digits.size() - other._digits.size());
-  big_integer result(vec(it + 1));
-  auto last_zero = _digits.end();
-  while (it >= 0) {
-    big_integer portion = vec(_digits.begin() + it, last_zero);
-    portion.reduce_zeroes();
-    uint64_t quotient = eval_quotient(portion, other);
-    result._digits[it] = quotient;
-    big_integer replacement(portion - quotient * other);
-    replacement.ensure_size(_digits.end() - _digits.begin() - it);
-    std::copy(replacement._digits.begin(), replacement._digits.end(), _digits.begin() + it);
-    --it;
-    while (last_zero != _digits.begin() && last_zero[-1] == 0) {
-      last_zero--;
-    }
-  }
-  reduce_zeroes();
-  result.reduce_zeroes();
-  return result;
+  big_integer copy(*this);
+  big_integer quotient(divide(*this, big_integer(other)));
+  *this = copy - other * quotient;
+  return quotient;
 }
 
 big_integer::big_integer(vec vector) : _digits(vector), _negative(false) {}
@@ -183,7 +180,7 @@ big_integer& big_integer::binary_bit_operation(const big_integer& other, const F
 }
 
 template <typename F>
-void vector_bit_f(const big_integer& a, const big_integer& b, big_integer& result, const F& f) {
+void big_integer::vector_bit_f(const big_integer& a, const big_integer& b, big_integer& result, const F& f) {
   size_t max_len = std::max(a._digits.size(), b._digits.size());
   bool a_carry = a._negative, b_carry = b._negative;
   result._digits.resize(max_len);
@@ -202,7 +199,8 @@ void vector_bit_f(const big_integer& a, const big_integer& b, big_integer& resul
 }
 
 template <typename F>
-void vector_f(big_integer::const_vec_ref a, big_integer::const_vec_ref b, big_integer::vec_ref result, const F& f) {
+void big_integer::vector_f(big_integer::const_vec_ref a, big_integer::const_vec_ref b, big_integer::vec_ref result,
+                           const F& f) {
   bool carry = false;
   result.resize(std::max(a.size(), b.size()));
   for (size_t i = 0; i < a.size(); ++i) {
