@@ -12,12 +12,12 @@
 #include <utility>
 
 namespace loc_consts {
-constexpr uint32_t chunk_size = 32;
-constexpr uint32_t chunk_size_log2 = 5;
+constexpr uint32_t CHUNK_SIZE = 32;
+constexpr uint32_t CHUNK_SIZE_LOG2 = 5;
 constexpr uint64_t BETTA = 4'294'967'296;
-constexpr unsigned long base = 10;
-constexpr unsigned long transition_chunk_size = 9;
-constexpr unsigned long transition_chunk = 1'000'000'000;
+constexpr unsigned long BASE = 10;
+constexpr unsigned long TRANSITION_CHUNK_SIZE = 9;
+constexpr unsigned long TRANSITION_CHUNK = 1'000'000'000;
 
 constexpr uint32_t CHUNK_MAX = std::numeric_limits<uint32_t>().max();
 constexpr uint64_t DOUBLE_CHUNK_MAX = std::numeric_limits<uint64_t>().max();
@@ -25,9 +25,7 @@ constexpr int64_t SIGNED_DOUBLE_CHUNK_MIN = std::numeric_limits<int64_t>().min()
 constexpr int64_t SIGNED_DOUBLE_CHUNK_MAX = std::numeric_limits<int64_t>().max();
 } // namespace loc_consts
 
-big_integer::big_integer() : _negative(false) {
-  _digits.push_back(0);
-}
+big_integer::big_integer() : _negative(false), _digits({0}) {}
 
 big_integer::big_integer(const big_integer& other) = default;
 
@@ -49,7 +47,7 @@ big_integer::big_integer(unsigned long long a) : big_integer(a, false) {}
 
 big_integer::big_integer(unsigned long long a, bool sign) : _negative(sign) {
   _digits.push_back(a);
-  if (a >>= loc_consts::chunk_size) {
+  if (a >>= loc_consts::CHUNK_SIZE) {
     _digits.push_back(a);
   }
 }
@@ -63,17 +61,17 @@ big_integer::big_integer(const std::string& str) : _negative(false) {
   if (sign && str.length() == 1) {
     throw std::invalid_argument("Expected valid number while initializing big_integer, single dash found.");
   }
-
-  if (!std::all_of(str.begin() + sign, str.end(), ::isdigit)) {
-    throw std::invalid_argument("Met invalid character while initializing big_integer with a string.");
+  for (size_t i = sign; i < str.size(); ++i) {
+    if (!isdigit(static_cast<unsigned char>(str[i]))) {
+      throw std::invalid_argument("Met invalid character while initializing big_integer with a string.");
+    }
   }
-
   uint32_t digit = 0;
-  for (size_t i = sign; i < str.size(); i += loc_consts::transition_chunk_size) {
-    unsigned long length = std::min(loc_consts::transition_chunk_size, str.size() - i);
+  for (size_t i = sign; i < str.size(); i += loc_consts::TRANSITION_CHUNK_SIZE) {
+    unsigned long length = std::min(loc_consts::TRANSITION_CHUNK_SIZE, str.size() - i);
     digit = std::stoi(str.substr(i, length));
-    operator*=(length == loc_consts::transition_chunk_size ? loc_consts::transition_chunk
-                                                           : static_cast<uint32_t>(pow(loc_consts::base, length)));
+    operator*=(length == loc_consts::TRANSITION_CHUNK_SIZE ? loc_consts::TRANSITION_CHUNK
+                                                           : static_cast<uint32_t>(pow(loc_consts::BASE, length)));
     operator+=(digit);
   }
   _negative = !(*this == 0) && sign;
@@ -114,14 +112,14 @@ big_integer& big_integer::convert() noexcept {
       uint64_t res = ~x;
       res += carry;
       x = res;
-      carry = res >> loc_consts::chunk_size;
+      carry = res >> loc_consts::CHUNK_SIZE;
     });
   }
   return *this;
 }
 
 uint64_t eval_quotient(const big_integer& divisible, const big_integer& divider) {
-  uint64_t l = 0, r = (loc_consts::DOUBLE_CHUNK_MAX >> loc_consts::chunk_size) + 1;
+  uint64_t l = 0, r = (loc_consts::DOUBLE_CHUNK_MAX >> loc_consts::CHUNK_SIZE) + 1;
   while (r - l > 1) {
     uint32_t m = (l + r) / 2;
     if (m * divider <= divisible) {
@@ -142,20 +140,20 @@ big_integer big_integer::divide(big_integer& A, big_integer B) {
   big_integer Q;
   big_integer::vec_ref q = Q._digits;
   q.resize(m + 1);
-  if (A >= (B << static_cast<int>(m << loc_consts::chunk_size_log2))) {
+  if (A >= (B << static_cast<int>(m << loc_consts::CHUNK_SIZE_LOG2))) {
     q[m] = 1;
-    A -= (B << static_cast<int>(m << loc_consts::chunk_size_log2));
+    A -= (B << static_cast<int>(m << loc_consts::CHUNK_SIZE_LOG2));
   } else {
     q[m] = 0;
   }
   for (size_t j = m; j-- > 0;) {
     uint64_t q_tmp =
-        n + j < a.size() ? ((static_cast<uint64_t>(a[n + j]) << loc_consts::chunk_size) + a[n + j - 1]) / b[n - 1] : 0;
+        n + j < a.size() ? ((static_cast<uint64_t>(a[n + j]) << loc_consts::CHUNK_SIZE) + a[n + j - 1]) / b[n - 1] : 0;
     q[j] = std::min(q_tmp, loc_consts::BETTA - 1);
-    A -= ((q[j] * B) << static_cast<int>(j << loc_consts::chunk_size_log2));
+    A -= ((q[j] * B) << static_cast<int>(j << loc_consts::CHUNK_SIZE_LOG2));
     while (A < 0) {
       --q[j];
-      A += (B << static_cast<int>(j << loc_consts::chunk_size_log2));
+      A += (B << static_cast<int>(j << loc_consts::CHUNK_SIZE_LOG2));
     }
   }
   Q.reduce_zeroes();
@@ -255,7 +253,7 @@ big_integer& big_integer::operator*=(const big_integer& other) {
       const uint64_t result = (other_it < other._digits.size() ? other._digits[other_it] * multiplier : 0) +
                               _digits[this_it + other_it] + carry;
       _digits[this_it + other_it] = result;
-      carry = result >> loc_consts::chunk_size;
+      carry = result >> loc_consts::CHUNK_SIZE;
       other_it++;
     }
   }
@@ -295,18 +293,18 @@ big_integer& big_integer::operator^=(const big_integer& other) {
 }
 
 big_integer& big_integer::operator<<=(int other) {
-  size_t shift = other / loc_consts::chunk_size;
+  size_t shift = other / loc_consts::CHUNK_SIZE;
   ensure_size(_digits.size() + shift + 2);
   convert();
   for (size_t i = _digits.size() - 1; i-- > 0;) {
     _digits[i] = i < shift ? 0 : _digits[i - shift];
   }
-  shift = other % loc_consts::chunk_size;
-  for (size_t i = _digits.size() - 2; shift > 0 && i-- > other / loc_consts::chunk_size;) {
-    _digits[i + 1] = (_digits[i + 1] << shift) | (_digits[i] >> (loc_consts::chunk_size - shift));
+  shift = other % loc_consts::CHUNK_SIZE;
+  for (size_t i = _digits.size() - 2; shift > 0 && i-- > other / loc_consts::CHUNK_SIZE;) {
+    _digits[i + 1] = (_digits[i + 1] << shift) | (_digits[i] >> (loc_consts::CHUNK_SIZE - shift));
   }
-  _digits[other / loc_consts::chunk_size] <<= shift;
-  for (size_t i = 0; i < other / loc_consts::chunk_size; ++i) {
+  _digits[other / loc_consts::CHUNK_SIZE] <<= shift;
+  for (size_t i = 0; i < other / loc_consts::CHUNK_SIZE; ++i) {
     _digits[i] = 0;
   }
   convert();
@@ -315,18 +313,18 @@ big_integer& big_integer::operator<<=(int other) {
 }
 
 big_integer& big_integer::operator>>=(int other) {
-  if (_digits.size() * loc_consts::chunk_size < other) {
+  if (_digits.size() * loc_consts::CHUNK_SIZE < other) {
     return _negative ? *this = -1 : *this = 0;
   }
-  size_t shift = other / loc_consts::chunk_size;
+  size_t shift = other / loc_consts::CHUNK_SIZE;
   ensure_size(_digits.size() + 2);
   convert();
   for (size_t i = 0; i < _digits.size(); ++i) {
     _digits[i] = i < _digits.size() - shift ? _digits[i + shift] : (_negative ? loc_consts::CHUNK_MAX : 0);
   }
-  shift = other % loc_consts::chunk_size;
+  shift = other % loc_consts::CHUNK_SIZE;
   for (size_t i = 0; shift > 0 && i < _digits.size() - 1; ++i) {
-    _digits[i] = (_digits[i + 1] << (loc_consts::chunk_size - shift)) | (_digits[i] >> shift);
+    _digits[i] = (_digits[i + 1] << (loc_consts::CHUNK_SIZE - shift)) | (_digits[i] >> shift);
   }
   convert();
   reduce_zeroes();
@@ -445,10 +443,10 @@ std::string to_string(const big_integer& a) {
   divisible._negative = false;
   std::string result;
   do {
-    big_integer tmp(divisible.divide(loc_consts::transition_chunk));
+    big_integer tmp(divisible.divide(loc_consts::TRANSITION_CHUNK));
     std::string portion(std::to_string(divisible._digits.front()));
     std::reverse(portion.begin(), portion.end());
-    portion += std::string(loc_consts::transition_chunk_size - portion.size(), '0');
+    portion += std::string(loc_consts::TRANSITION_CHUNK_SIZE - portion.size(), '0');
     result += portion;
     divisible = tmp;
   } while (big_integer(0).abs_less(divisible));
