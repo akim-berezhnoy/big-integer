@@ -41,9 +41,7 @@ big_integer::big_integer(long long a)
     : big_integer(a == loc_consts::SIGNED_DOUBLE_CHUNK_MIN
                       ? loc_consts::DOUBLE_CHUNK_MAX - loc_consts::SIGNED_DOUBLE_CHUNK_MAX
                       : (a < 0 ? -a : a),
-                  a < 0) {
-  reduce_zeroes();
-}
+                  a < 0) {}
 
 big_integer::big_integer(unsigned long long a) : big_integer(a, false) {}
 
@@ -437,7 +435,7 @@ std::string to_string(const big_integer& a) {
   std::string result;
   do {
     big_integer tmp(divisible.divide(loc_consts::TRANSITION_CHUNK));
-    std::string portion(std::to_string(divisible._digits.front()));
+    std::string portion(std::to_string(divisible._digits.empty() ? 0 : divisible._digits.front()));
     std::reverse(portion.begin(), portion.end());
     portion += std::string(loc_consts::TRANSITION_CHUNK_SIZE - portion.size(), '0');
     result += portion;
