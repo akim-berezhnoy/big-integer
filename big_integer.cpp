@@ -25,7 +25,7 @@ constexpr int64_t SIGNED_DOUBLE_CHUNK_MIN = std::numeric_limits<int64_t>().min()
 constexpr int64_t SIGNED_DOUBLE_CHUNK_MAX = std::numeric_limits<int64_t>().max();
 } // namespace loc_consts
 
-big_integer::big_integer() : _negative(false), _digits({0}) {}
+big_integer::big_integer() : _digits({0}), _negative(false) {}
 
 big_integer::big_integer(const big_integer& other) = default;
 
