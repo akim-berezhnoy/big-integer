@@ -25,7 +25,7 @@ constexpr int64_t SIGNED_DOUBLE_CHUNK_MIN = std::numeric_limits<int64_t>().min()
 constexpr int64_t SIGNED_DOUBLE_CHUNK_MAX = std::numeric_limits<int64_t>().max();
 } // namespace loc_consts
 
-big_integer::big_integer() : _digits({0}), _negative(false) {}
+big_integer::big_integer() : _digits(), _negative(false) {}
 
 big_integer::big_integer(const big_integer& other) = default;
 
@@ -41,7 +41,9 @@ big_integer::big_integer(long long a)
     : big_integer(a == loc_consts::SIGNED_DOUBLE_CHUNK_MIN
                       ? loc_consts::DOUBLE_CHUNK_MAX - loc_consts::SIGNED_DOUBLE_CHUNK_MAX
                       : (a < 0 ? -a : a),
-                  a < 0) {}
+                  a < 0) {
+  reduce_zeroes();
+}
 
 big_integer::big_integer(unsigned long long a) : big_integer(a, false) {}
 
@@ -50,6 +52,7 @@ big_integer::big_integer(unsigned long long a, bool sign) : _negative(sign) {
   if (a >>= loc_consts::CHUNK_SIZE) {
     _digits.push_back(a);
   }
+  reduce_zeroes();
 }
 
 big_integer::big_integer(const std::string& str) : _negative(false) {
@@ -86,7 +89,7 @@ void big_integer::ensure_size(size_t n) {
 }
 
 void big_integer::reduce_zeroes() noexcept {
-  while (_digits.size() > 1 && !_digits.back()) {
+  while (!_digits.empty() && !_digits.back()) {
     _digits.pop_back();
   }
 }
@@ -116,19 +119,6 @@ big_integer& big_integer::convert() noexcept {
     });
   }
   return *this;
-}
-
-uint64_t eval_quotient(const big_integer& divisible, const big_integer& divider) {
-  uint64_t l = 0, r = (loc_consts::DOUBLE_CHUNK_MAX >> loc_consts::CHUNK_SIZE) + 1;
-  while (r - l > 1) {
-    uint32_t m = (l + r) / 2;
-    if (m * divider <= divisible) {
-      l = m;
-    } else {
-      r = m;
-    }
-  }
-  return l;
 }
 
 big_integer big_integer::divide(big_integer& A, big_integer B) {
@@ -438,6 +428,9 @@ bool operator>=(const big_integer& a, const big_integer& b) {
 }
 
 std::string to_string(const big_integer& a) {
+  if (a == 0) {
+    return "0";
+  }
   bool sign = a._negative && !a.abs_eq(0);
   big_integer divisible(a);
   divisible._negative = false;
@@ -450,7 +443,7 @@ std::string to_string(const big_integer& a) {
     result += portion;
     divisible = tmp;
   } while (big_integer(0).abs_less(divisible));
-  while (result.size() > 1 && result.back() == '0') {
+  while (!result.empty() && result.back() == '0') {
     result.pop_back();
   }
   if (sign) {
