@@ -426,7 +426,7 @@ bool operator>=(const big_integer& a, const big_integer& b) {
 }
 
 std::string to_string(const big_integer& a) {
-  if (a == 0) {
+  if (a._digits.empty()) {
     return "0";
   }
   bool sign = a._negative && !a.abs_eq(0);
