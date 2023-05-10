@@ -144,6 +144,7 @@ big_integer big_integer::divide(big_integer& A, big_integer B) {
       A += (B << static_cast<int>(j << loc_consts::CHUNK_SIZE_LOG2));
     }
   }
+  A >>= shift;
   Q.reduce_zeroes();
   return Q;
 }
@@ -154,7 +155,6 @@ big_integer big_integer::divide(const big_integer& other) {
   }
   big_integer copy(*this);
   big_integer quotient(divide(*this, big_integer(other)));
-  *this = copy - other * quotient;
   return quotient;
 }
 
@@ -190,14 +190,14 @@ template <typename F>
 void big_integer::vector_f(big_integer::const_vec_ref a, big_integer::const_vec_ref b, big_integer::vec_ref result,
                            const F& f) {
   bool carry = false;
-  result.resize(std::max(a.size(), b.size()));
+  result.resize(std::max(a.size(), b.size()) + 1);
   for (size_t i = 0; i < a.size(); ++i) {
     int64_t res = f(f(a[i], (i < b.size() ? b[i] : 0)), carry);
     carry = (res > loc_consts::CHUNK_MAX) || (res < 0);
     result[i] = res;
   }
   if (carry) {
-    result.push_back(carry);
+    result[a.size()] = carry;
   }
 }
 
@@ -253,7 +253,8 @@ big_integer& big_integer::operator*=(const big_integer& other) {
 big_integer& big_integer::operator/=(const big_integer& other) {
   bool sign = _negative ^ other._negative;
   big_integer divider(other);
-  divider._negative = _negative = false;
+  divider._negative = false;
+  _negative = false;
   *this = divide(divider);
   _negative = sign;
   return *this;
@@ -262,7 +263,8 @@ big_integer& big_integer::operator/=(const big_integer& other) {
 big_integer& big_integer::operator%=(const big_integer& other) {
   bool sign = _negative;
   big_integer divider(other);
-  divider._negative = _negative = false;
+  divider._negative = false;
+  _negative = false;
   divide(divider);
   _negative = sign && *this != 0;
   return *this;
@@ -332,7 +334,9 @@ big_integer big_integer::operator-() const {
 }
 
 big_integer big_integer::operator~() const {
-  return operator-() - 1;
+  big_integer tmp(operator-());
+  tmp -= 1;
+  return tmp;
 }
 
 big_integer& big_integer::operator++() {
@@ -396,10 +400,7 @@ big_integer operator>>(const big_integer& a, int b) {
 }
 
 bool operator==(const big_integer& a, const big_integer& b) {
-  if (a._negative == b._negative) {
-    return a.abs_eq(b);
-  }
-  return false;
+  return (a._negative == b._negative) && a.abs_eq(b);
 }
 
 bool operator!=(const big_integer& a, const big_integer& b) {
