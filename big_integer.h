@@ -67,8 +67,14 @@ private:
   big_integer(vec vector);
   big_integer(unsigned long long a, bool sign);
 
+  big_integer& add(int32_t other);
+  big_integer& mul(uint32_t other);
+  big_integer div(uint32_t other);
+
   static big_integer divide(big_integer& a, big_integer b);
 
+  template <typename F>
+  big_integer& add_sub_chunk(uint32_t chunk, const F& f);
   template <typename F>
   inline big_integer& binary_bit_operation(const big_integer& other, const F& f);
   template <typename F>
