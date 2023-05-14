@@ -20,7 +20,6 @@ constexpr unsigned long TRANSITION_CHUNK_SIZE = 9;
 constexpr unsigned long TRANSITION_CHUNK = 1'000'000'000;
 
 constexpr uint32_t CHUNK_MAX = std::numeric_limits<uint32_t>().max();
-constexpr int32_t SIGNED_CHUNK_MIN = std::numeric_limits<int32_t>().min();
 constexpr uint64_t DOUBLE_CHUNK_MAX = std::numeric_limits<uint64_t>().max();
 constexpr int64_t SIGNED_DOUBLE_CHUNK_MIN = std::numeric_limits<int64_t>().min();
 constexpr int64_t SIGNED_DOUBLE_CHUNK_MAX = std::numeric_limits<int64_t>().max();
