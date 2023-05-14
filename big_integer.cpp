@@ -210,7 +210,6 @@ big_integer& big_integer::mul(uint32_t other) {
 }
 
 big_integer big_integer::div(uint32_t other) {
-  assert(other != 0);
   uint64_t carry = 0;
   big_integer quotient;
   quotient._digits.resize(_digits.size());
